@@ -106,7 +106,7 @@
 
     .card input::placeholder { color: var(--text-muted); }
 
-    /* 추적 시작/중지 버튼 */
+    /* 전송 시작/중지 버튼 */
     .send-btn {
       width: 100%; max-width: 400px;
       padding: 18px;
@@ -117,14 +117,14 @@
       transition: transform .15s, box-shadow .15s, background .3s;
     }
 
-    /* 추적 중지 상태 (초록) */
+    /* 전송 중지 상태 (초록) */
     .send-btn.idle {
       background: var(--accent);
       color: #0d1117;
       box-shadow: 0 4px 24px var(--accent-glow);
     }
 
-    /* 추적 진행 상태 (빨강) */
+    /* 전송 진행 상태 (빨강) */
     .send-btn.tracking {
       background: var(--warn);
       color: #fff;
@@ -147,7 +147,7 @@
       border: 1px solid var(--border);
       border-radius: var(--radius);
       padding: 16px 20px;
-      display: none; /* 추적 시작 전 숨김 */
+      display: none; /* 전송 시작 전 숨김 */
       flex-direction: column;
       gap: 10px;
     }
@@ -243,12 +243,12 @@
     />
   </div>
 
-  <!-- 추적 시작/중지 버튼 -->
+  <!-- 전송 시작/중지 버튼 -->
   <button class="send-btn idle" id="toggleBtn" onclick="toggleTracking()">
-    🟢 위치 추적 시작
+    🟢 위치 전송 시작
   </button>
 
-  <!-- 카운트다운 진행 바 (추적 중에만 표시) -->
+  <!-- 카운트다운 진행 바 (전송 중에만 표시) -->
   <div class="progress-wrap" id="progressWrap">
     <div class="progress-info">
       <span>다음 전송까지</span>
@@ -281,14 +281,14 @@
   // ============================================================
   // 전역 상태 변수
   // ============================================================
-  var isTracking  = false;  // 추적 중 여부
+  var isTracking  = false;  // 전송 중 여부
   var sendCount   = 0;      // 총 전송 횟수
   var intervalID  = null;   // setInterval ID
   var countdownID = null;   // 카운트다운 setInterval ID
   var remaining   = SEND_INTERVAL_SEC; // 다음 전송까지 남은 초
 
   // ============================================================
-  // 🔁 toggleTracking() - 추적 시작 / 중지 토글
+  // 🔁 toggleTracking() - 전송 시작 / 중지 토글
   // ============================================================
   function toggleTracking() {
     if (isTracking) {
@@ -299,7 +299,7 @@
   }
 
   // ============================================================
-  // ▶️ startTracking() - 자동 추적 시작
+  // ▶️ startTracking() - 자동 전송 시작
   // ============================================================
   function startTracking() {
     var nameInput = document.getElementById('studentName').value.trim();
@@ -317,12 +317,12 @@
 
     isTracking = true;
 
-    // 이름 입력 잠금 (추적 중 변경 방지)
+    // 이름 입력 잠금 (전송 중 변경 방지)
     document.getElementById('studentName').disabled = true;
 
     // 버튼 상태 변경
     var btn = document.getElementById('toggleBtn');
-    btn.textContent = '🔴 위치 추적 중지';
+    btn.textContent = '🔴 위치 전송 중지';
     btn.classList.remove('idle');
     btn.classList.add('tracking');
 
@@ -346,7 +346,7 @@
   }
 
   // ============================================================
-  // ⏹️ stopTracking() - 자동 추적 중지
+  // ⏹️ stopTracking() - 자동 전송 중지
   // ============================================================
   function stopTracking() {
     isTracking = false;
@@ -365,7 +365,7 @@
 
     // 타이틀 복원
     document.getElementById('titleIcon').textContent = '📍';
-    document.getElementById('titleDesc').textContent = '버튼을 눌러 자동 위치 추적을 시작하세요';
+    document.getElementById('titleDesc').textContent = '버튼을 눌러 자동 위치 전송을 시작하세요';
 
     // 카운트다운 바 숨김
     document.getElementById('progressWrap').classList.remove('visible');
@@ -395,12 +395,12 @@
       },
       function(err) {
         var messages = {
-          1: '위치 권한이 거부되었습니다. 추적을 중지합니다.',
+          1: '위치 권한이 거부되었습니다. 전송을 중지합니다.',
           2: '위치 정보를 가져올 수 없습니다.',
           3: '위치 요청 시간이 초과되었습니다.'
         };
         showStatus('⚠️ ' + (messages[err.code] || '오류 발생'), 'error');
-        // 권한 거부 시 추적 자동 중지
+        // 권한 거부 시 전송 자동 중지
         if (err.code === 1) stopTracking();
       },
       { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
