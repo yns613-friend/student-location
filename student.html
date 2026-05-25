@@ -1,0 +1,371 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0" />
+  <title>내 위치 전송</title>
+
+  <!-- Google Fonts: 학생용 친근한 폰트 -->
+  <link href="https://fonts.googleapis.com/css2?family=Gowun+Dodum&family=Black+Han+Sans&display=swap" rel="stylesheet" />
+
+  <style>
+    /* ── 리셋 & 기본 변수 ── */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg         : #0d1117;
+      --surface    : #161b22;
+      --border     : #30363d;
+      --accent     : #3fb950;        /* 초록 - 위치 전송 성공 느낌 */
+      --accent-glow: rgba(63,185,80,.35);
+      --warn       : #f85149;
+      --warn-glow  : rgba(248,81,73,.3);
+      --text-main  : #e6edf3;
+      --text-muted : #8b949e;
+      --radius     : 16px;
+    }
+
+    html, body {
+      height: 100%;
+      font-family: 'Gowun Dodum', sans-serif;
+      background: var(--bg);
+      color: var(--text-main);
+      overflow: hidden;
+    }
+
+    /* ── 배경 애니메이션 ── */
+    body::before {
+      content: '';
+      position: fixed; inset: 0; z-index: 0;
+      background:
+        radial-gradient(ellipse 80% 50% at 50% -10%, rgba(63,185,80,.12) 0%, transparent 60%),
+        radial-gradient(ellipse 50% 40% at 80% 80%, rgba(56,139,253,.08) 0%, transparent 50%);
+      pointer-events: none;
+    }
+
+    /* ── 레이아웃 ── */
+    .wrapper {
+      position: relative; z-index: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      height: 100vh;
+      padding: 24px;
+      gap: 28px;
+    }
+
+    /* ── 상단 타이틀 ── */
+    .title-block { text-align: center; }
+
+    .title-block .icon {
+      font-size: 3rem;
+      display: block;
+      margin-bottom: 8px;
+      animation: float 3s ease-in-out infinite;
+    }
+
+    @keyframes float {
+      0%, 100% { transform: translateY(0); }
+      50%       { transform: translateY(-8px); }
+    }
+
+    .title-block h1 {
+      font-family: 'Black Han Sans', sans-serif;
+      font-size: clamp(1.6rem, 5vw, 2.4rem);
+      letter-spacing: -.5px;
+      color: var(--text-main);
+    }
+
+    .title-block p {
+      margin-top: 6px;
+      font-size: .9rem;
+      color: var(--text-muted);
+    }
+
+    /* ── 이름 입력 카드 ── */
+    .card {
+      width: 100%;
+      max-width: 400px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 24px;
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+    }
+
+    .card label {
+      font-size: .85rem;
+      color: var(--text-muted);
+      letter-spacing: .5px;
+    }
+
+    .card input {
+      width: 100%;
+      padding: 12px 16px;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      color: var(--text-main);
+      font-family: 'Gowun Dodum', sans-serif;
+      font-size: 1rem;
+      outline: none;
+      transition: border-color .2s;
+    }
+
+    .card input:focus {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px var(--accent-glow);
+    }
+
+    .card input::placeholder { color: var(--text-muted); }
+
+    /* ── 전송 버튼 ── */
+    .send-btn {
+      width: 100%;
+      max-width: 400px;
+      padding: 18px;
+      background: var(--accent);
+      border: none;
+      border-radius: var(--radius);
+      color: #0d1117;
+      font-family: 'Black Han Sans', sans-serif;
+      font-size: 1.25rem;
+      letter-spacing: 1px;
+      cursor: pointer;
+      position: relative;
+      overflow: hidden;
+      transition: transform .15s, box-shadow .15s;
+      box-shadow: 0 4px 24px var(--accent-glow);
+    }
+
+    .send-btn:hover:not(:disabled) {
+      transform: translateY(-2px);
+      box-shadow: 0 8px 32px var(--accent-glow);
+    }
+
+    .send-btn:active:not(:disabled) { transform: translateY(0); }
+
+    /* 버튼 로딩 상태 */
+    .send-btn:disabled {
+      opacity: .6;
+      cursor: not-allowed;
+      background: var(--border);
+    }
+
+    /* 버튼 내 스피너 */
+    .send-btn .spinner {
+      display: none;
+      width: 20px; height: 20px;
+      border: 2.5px solid rgba(0,0,0,.25);
+      border-top-color: #0d1117;
+      border-radius: 50%;
+      animation: spin .7s linear infinite;
+      margin: 0 auto;
+    }
+
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    .send-btn.loading .btn-text { display: none; }
+    .send-btn.loading .spinner  { display: block; }
+
+    /* ── 상태 메시지 ── */
+    .status {
+      width: 100%;
+      max-width: 400px;
+      padding: 14px 18px;
+      border-radius: 12px;
+      font-size: .9rem;
+      text-align: center;
+      border: 1px solid transparent;
+      opacity: 0;
+      transform: translateY(8px);
+      transition: opacity .3s, transform .3s;
+      pointer-events: none;
+    }
+
+    .status.visible {
+      opacity: 1;
+      transform: translateY(0);
+    }
+
+    .status.success {
+      background: rgba(63,185,80,.1);
+      border-color: rgba(63,185,80,.4);
+      color: var(--accent);
+    }
+
+    .status.error {
+      background: rgba(248,81,73,.1);
+      border-color: rgba(248,81,73,.4);
+      color: var(--warn);
+    }
+
+    /* ── 좌표 미리보기 ── */
+    .coords-preview {
+      font-size: .78rem;
+      color: var(--text-muted);
+      text-align: center;
+    }
+
+    .coords-preview span { color: var(--accent); }
+
+    /* ── 모바일 최적화 ── */
+    @media (max-width: 480px) {
+      .send-btn { font-size: 1.1rem; padding: 16px; }
+    }
+  </style>
+</head>
+<body>
+
+<div class="wrapper">
+
+  <!-- 타이틀 -->
+  <div class="title-block">
+    <span class="icon">📍</span>
+    <h1>현재 위치 전송</h1>
+    <p>버튼을 눌러 선생님께 위치를 알려주세요</p>
+  </div>
+
+  <!-- 이름 입력 카드 -->
+  <div class="card">
+    <label for="studentName">이름 또는 학번</label>
+    <input
+      type="text"
+      id="studentName"
+      placeholder="예) 홍길동 또는 20241001"
+      maxlength="30"
+      autocomplete="off"
+    />
+  </div>
+
+  <!-- 전송 버튼 -->
+  <button class="send-btn" id="sendBtn" onclick="sendLocation()">
+    <span class="btn-text">📡 내 위치 전송</span>
+    <span class="spinner"></span>
+  </button>
+
+  <!-- 좌표 미리보기 (전송 후 표시) -->
+  <div class="coords-preview" id="coordsPreview"></div>
+
+  <!-- 상태 메시지 -->
+  <div class="status" id="statusMsg"></div>
+
+</div>
+
+<script>
+  // ============================================================
+  // ⚙️ 설정값 - Apps Script 웹앱 URL을 여기에 붙여넣으세요
+  // ============================================================
+  var APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzJ6ce-mZmO5yggSQ-36ALXHQ7XNbHyXXS_xPoFVwUMZ6L1z9skk4L8RTHe8Pioc__1/exec';
+
+  // ============================================================
+  // 📡 sendLocation() - 위치 수집 후 서버로 전송
+  // ============================================================
+  function sendLocation() {
+    var nameInput = document.getElementById('studentName').value.trim();
+
+    // 이름/학번 미입력 확인
+    if (!nameInput) {
+      showStatus('이름 또는 학번을 입력해주세요.', 'error');
+      document.getElementById('studentName').focus();
+      return;
+    }
+
+    // 브라우저 GPS 지원 여부 확인
+    if (!navigator.geolocation) {
+      showStatus('이 브라우저는 위치 서비스를 지원하지 않습니다.', 'error');
+      return;
+    }
+
+    // 버튼을 로딩 상태로 변경
+    setLoading(true);
+    showStatus('📡 위치 정보를 가져오는 중...', 'success');
+
+    // GPS 좌표 수집
+    navigator.geolocation.getCurrentPosition(
+      function(position) {
+        var lat = position.coords.latitude;
+        var lng = position.coords.longitude;
+
+        // 좌표 미리보기 표시
+        document.getElementById('coordsPreview').innerHTML =
+          '위도 <span>' + lat.toFixed(6) + '</span> &nbsp;|&nbsp; 경도 <span>' + lng.toFixed(6) + '</span>';
+
+        // 서버로 POST 전송
+        postToServer({ name: nameInput, latitude: lat, longitude: lng });
+      },
+      function(err) {
+        // 위치 수집 실패 처리
+        var messages = {
+          1: '위치 접근이 거부되었습니다. 브라우저 설정에서 위치 권한을 허용해주세요.',
+          2: '위치 정보를 가져올 수 없습니다. 네트워크나 GPS를 확인해주세요.',
+          3: '위치 요청 시간이 초과되었습니다. 다시 시도해주세요.'
+        };
+        showStatus(messages[err.code] || '알 수 없는 오류가 발생했습니다.', 'error');
+        setLoading(false);
+      },
+      {
+        enableHighAccuracy: true,  // 고정밀 GPS 사용
+        timeout: 10000,            // 10초 제한
+        maximumAge: 0              // 캐시 사용 안 함
+      }
+    );
+  }
+
+  // ============================================================
+  // 📤 postToServer() - Apps Script 웹앱으로 좌표 전송
+  // ============================================================
+  function postToServer(data) {
+    // CORS 우회를 위해 no-cors 모드로 전송
+    // (Apps Script는 preflight 없이 POST를 받을 수 있음)
+    fetch(APPS_SCRIPT_URL, {
+      method: 'POST',
+      mode: 'no-cors',   // Apps Script CORS 정책 우회
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data)
+    })
+    .then(function() {
+      // no-cors 모드에서는 응답 본문을 읽을 수 없으므로 성공으로 간주
+      showStatus('✅ 위치가 성공적으로 전송되었습니다!', 'success');
+    })
+    .catch(function(err) {
+      showStatus('❌ 전송 실패: ' + err.message, 'error');
+    })
+    .finally(function() {
+      setLoading(false);
+    });
+  }
+
+  // ============================================================
+  // 🎨 UI 헬퍼 함수들
+  // ============================================================
+
+  // 상태 메시지 표시
+  function showStatus(msg, type) {
+    var el = document.getElementById('statusMsg');
+    el.textContent = msg;
+    el.className = 'status ' + type + ' visible';
+  }
+
+  // 버튼 로딩 상태 토글
+  function setLoading(isLoading) {
+    var btn = document.getElementById('sendBtn');
+    btn.disabled = isLoading;
+    if (isLoading) {
+      btn.classList.add('loading');
+    } else {
+      btn.classList.remove('loading');
+    }
+  }
+
+  // 엔터키로도 전송 가능
+  document.getElementById('studentName').addEventListener('keydown', function(e) {
+    if (e.key === 'Enter') sendLocation();
+  });
+</script>
+
+</body>
+</html>
