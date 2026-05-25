@@ -1,0 +1,581 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>학생 위치 현황 지도</title>
+
+  <!-- Google Fonts -->
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700&family=Black+Han+Sans&display=swap" rel="stylesheet" />
+
+  <!-- Google Maps API - YOUR_MAPS_API_KEY를 실제 키로 교체 -->
+  <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyD121ImvyNTssr490pwiUnPo2B3IaNAwxo&callback=initMap" async defer></script>
+
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg        : #f0f4f8;
+      --surface   : #ffffff;
+      --sidebar-w : 320px;
+      --header-h  : 60px;
+      --accent    : #1a73e8;
+      --accent-lt : #e8f0fe;
+      --green     : #1e8e3e;
+      --red       : #d93025;
+      --text      : #202124;
+      --muted     : #5f6368;
+      --border    : #dadce0;
+      --shadow    : 0 1px 3px rgba(0,0,0,.12), 0 2px 8px rgba(0,0,0,.08);
+      --radius    : 12px;
+    }
+
+    html, body { height: 100%; font-family: 'Noto Sans KR', sans-serif; background: var(--bg); color: var(--text); }
+
+    /* ── 헤더 ── */
+    header {
+      position: fixed; top: 0; left: 0; right: 0; z-index: 100;
+      height: var(--header-h);
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      box-shadow: var(--shadow);
+      display: flex;
+      align-items: center;
+      padding: 0 20px;
+      gap: 12px;
+    }
+
+    header .logo { font-size: 1.5rem; }
+
+    header h1 {
+      font-family: 'Black Han Sans', sans-serif;
+      font-size: 1.15rem;
+      color: var(--accent);
+      flex: 1;
+    }
+
+    /* 자동 갱신 카운터 */
+    .refresh-badge {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: .8rem;
+      color: var(--muted);
+      background: var(--bg);
+      padding: 6px 12px;
+      border-radius: 20px;
+      border: 1px solid var(--border);
+    }
+
+    .refresh-dot {
+      width: 8px; height: 8px;
+      background: var(--green);
+      border-radius: 50%;
+      animation: pulse 1.5s ease-in-out infinite;
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50%       { opacity: .5; transform: scale(.8); }
+    }
+
+    /* 수동 새로고침 버튼 */
+    .refresh-btn {
+      background: var(--accent);
+      color: #fff;
+      border: none;
+      padding: 8px 16px;
+      border-radius: 8px;
+      font-family: 'Noto Sans KR', sans-serif;
+      font-size: .85rem;
+      cursor: pointer;
+      transition: background .2s;
+    }
+
+    .refresh-btn:hover { background: #1557b0; }
+
+    /* ── 레이아웃 ── */
+    .layout {
+      display: flex;
+      height: calc(100vh - var(--header-h));
+      margin-top: var(--header-h);
+    }
+
+    /* ── 사이드바 ── */
+    .sidebar {
+      width: var(--sidebar-w);
+      flex-shrink: 0;
+      background: var(--surface);
+      border-right: 1px solid var(--border);
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    .sidebar-header {
+      padding: 16px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .sidebar-header h2 { font-size: .9rem; font-weight: 700; color: var(--text); }
+
+    .count-badge {
+      background: var(--accent-lt);
+      color: var(--accent);
+      font-size: .75rem;
+      font-weight: 700;
+      padding: 3px 9px;
+      border-radius: 12px;
+    }
+
+    .student-list {
+      flex: 1;
+      overflow-y: auto;
+      padding: 8px;
+    }
+
+    .student-list::-webkit-scrollbar { width: 4px; }
+    .student-list::-webkit-scrollbar-track { background: transparent; }
+    .student-list::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+
+    /* 학생 카드 */
+    .student-card {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 12px;
+      border-radius: 10px;
+      cursor: pointer;
+      transition: background .15s;
+      margin-bottom: 4px;
+    }
+
+    .student-card:hover   { background: var(--bg); }
+    .student-card.active  { background: var(--accent-lt); }
+
+    .student-avatar {
+      width: 38px; height: 38px;
+      border-radius: 50%;
+      background: var(--accent);
+      color: #fff;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 700;
+      font-size: .95rem;
+      flex-shrink: 0;
+    }
+
+    .student-info { flex: 1; min-width: 0; }
+
+    .student-name {
+      font-size: .9rem;
+      font-weight: 500;
+      color: var(--text);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .student-time {
+      font-size: .75rem;
+      color: var(--muted);
+      margin-top: 2px;
+    }
+
+    .student-coords {
+      font-size: .7rem;
+      color: var(--muted);
+    }
+
+    /* 데이터 없음 */
+    .empty-state {
+      padding: 40px 20px;
+      text-align: center;
+      color: var(--muted);
+    }
+
+    .empty-state .icon { font-size: 2.5rem; margin-bottom: 12px; }
+    .empty-state p     { font-size: .85rem; }
+
+    /* ── 지도 영역 ── */
+    #map {
+      flex: 1;
+      height: 100%;
+    }
+
+    /* 로딩 오버레이 */
+    .loading-overlay {
+      position: fixed; inset: 0; z-index: 200;
+      background: rgba(255,255,255,.85);
+      backdrop-filter: blur(4px);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-direction: column;
+      gap: 16px;
+      transition: opacity .3s;
+    }
+
+    .loading-overlay.hidden { opacity: 0; pointer-events: none; }
+
+    .loading-spinner {
+      width: 44px; height: 44px;
+      border: 4px solid var(--border);
+      border-top-color: var(--accent);
+      border-radius: 50%;
+      animation: spin .8s linear infinite;
+    }
+
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    .loading-text { font-size: .9rem; color: var(--muted); }
+
+    /* 오류 토스트 */
+    .toast {
+      position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%);
+      background: #323232;
+      color: #fff;
+      padding: 12px 20px;
+      border-radius: 8px;
+      font-size: .85rem;
+      z-index: 300;
+      opacity: 0;
+      transition: opacity .3s;
+      pointer-events: none;
+    }
+
+    .toast.show { opacity: 1; }
+
+    /* ── 모바일 반응형 ── */
+    @media (max-width: 700px) {
+      :root { --sidebar-w: 100%; }
+
+      .layout { flex-direction: column; }
+
+      .sidebar {
+        width: 100%;
+        height: 220px;
+        border-right: none;
+        border-bottom: 1px solid var(--border);
+      }
+
+      #map { flex: 1; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- 로딩 오버레이 -->
+<div class="loading-overlay" id="loadingOverlay">
+  <div class="loading-spinner"></div>
+  <div class="loading-text">데이터 불러오는 중...</div>
+</div>
+
+<!-- 헤더 -->
+<header>
+  <span class="logo">🗺️</span>
+  <h1>학생 위치 현황</h1>
+  <div class="refresh-badge">
+    <div class="refresh-dot"></div>
+    <span id="countdown">30초 후 갱신</span>
+  </div>
+  <button class="refresh-btn" onclick="loadData()">↻ 새로고침</button>
+</header>
+
+<!-- 메인 레이아웃 -->
+<div class="layout">
+
+  <!-- 사이드바: 학생 목록 -->
+  <aside class="sidebar">
+    <div class="sidebar-header">
+      <h2>전송 학생 목록</h2>
+      <span class="count-badge" id="countBadge">0명</span>
+    </div>
+    <div class="student-list" id="studentList">
+      <div class="empty-state">
+        <div class="icon">📭</div>
+        <p>아직 위치를 전송한 학생이 없습니다.</p>
+      </div>
+    </div>
+  </aside>
+
+  <!-- 지도 -->
+  <div id="map"></div>
+
+</div>
+
+<!-- 오류 토스트 -->
+<div class="toast" id="toast"></div>
+
+<script>
+  // ============================================================
+  // ⚙️ 설정값 - 여기를 수정하세요
+  // ============================================================
+  var APPS_SCRIPT_URL   = 'https://script.google.com/macros/s/AKfycbzJ6ce-mZmO5yggSQ-36ALXHQ7XNbHyXXS_xPoFVwUMZ6L1z9skk4L8RTHe8Pioc__1/exec'; // Apps Script 웹앱 URL
+  var SPREADSHEET_ID    = '147d3pWJi-F_7vyakT0-1GzxrQ31hE9W0bI1VYmqsaMs';          // 스프레드시트 ID
+  var SHEET_GID         = '0';                                  // 시트 GID (기본 시트: 0)
+  var REFRESH_INTERVAL  = 30;                                   // 자동 갱신 주기 (초)
+  var DEFAULT_CENTER    = { lat: 37.5665, lng: 126.9780 };     // 기본 지도 중심 (서울)
+
+  // ============================================================
+  // 전역 변수
+  // ============================================================
+  var map;          // Google Map 인스턴스
+  var markers = []; // 마커 배열
+  var infoWindow;   // 정보창
+  var countdown;    // 카운트다운 남은 시간
+  var timerID;      // setInterval ID
+
+  // ============================================================
+  // 🗺️ initMap() - Google Maps API 로드 완료 후 자동 호출
+  // ============================================================
+  function initMap() {
+    map = new google.maps.Map(document.getElementById('map'), {
+      center: DEFAULT_CENTER,
+      zoom  : 14,
+      styles : [ // 커스텀 지도 스타일 (밝고 깔끔한 테마)
+        { featureType: 'poi', elementType: 'labels', stylers: [{ visibility: 'off' }] }
+      ],
+      mapTypeControl        : false,
+      streetViewControl     : false,
+      fullscreenControlOptions: { position: google.maps.ControlPosition.TOP_LEFT }
+    });
+
+    infoWindow = new google.maps.InfoWindow();
+
+    // 최초 데이터 로드
+    loadData();
+
+    // 자동 갱신 시작
+    startCountdown();
+  }
+
+  // ============================================================
+  // 📊 loadData() - 스프레드시트에서 위치 데이터 가져오기
+  //    공개 CSV 내보내기 URL을 이용 (별도 API 키 불필요)
+  // ============================================================
+  function loadData() {
+    // Google Sheets 공개 CSV 내보내기 URL
+    var csvUrl =
+      'https://docs.google.com/spreadsheets/d/' + SPREADSHEET_ID +
+      '/export?format=csv&gid=' + SHEET_GID + '&t=' + Date.now();
+
+    fetch(csvUrl)
+      .then(function(res) {
+        if (!res.ok) throw new Error('스프레드시트를 읽을 수 없습니다. 공유 설정을 확인하세요.');
+        return res.text();
+      })
+      .then(function(csv) {
+        var data = parseCSV(csv);
+        renderMap(data);
+        renderSidebar(data);
+        hideLoading();
+        resetCountdown();
+      })
+      .catch(function(err) {
+        hideLoading();
+        showToast('⚠️ ' + err.message);
+        resetCountdown();
+      });
+  }
+
+  // ============================================================
+  // 🔄 parseCSV() - CSV 문자열을 객체 배열로 변환
+  // ============================================================
+  function parseCSV(csv) {
+    var lines  = csv.trim().split('\n');
+    var result = [];
+
+    // 첫 줄은 헤더이므로 1부터 시작
+    for (var i = 1; i < lines.length; i++) {
+      var cols = lines[i].split(',');
+      if (cols.length < 4) continue;
+
+      var lat = parseFloat(cols[2]);
+      var lng = parseFloat(cols[3]);
+
+      // 유효한 좌표인지 확인
+      if (isNaN(lat) || isNaN(lng)) continue;
+
+      result.push({
+        timestamp : cols[0].replace(/"/g, '').trim(),
+        name      : cols[1].replace(/"/g, '').trim(),
+        latitude  : lat,
+        longitude : lng
+      });
+    }
+
+    return result;
+  }
+
+  // ============================================================
+  // 📍 renderMap() - 파싱된 데이터를 지도 마커로 표시
+  // ============================================================
+  function renderMap(data) {
+    // 기존 마커 전부 제거
+    markers.forEach(function(m) { m.setMap(null); });
+    markers = [];
+
+    if (data.length === 0) return;
+
+    var bounds = new google.maps.LatLngBounds();
+
+    data.forEach(function(item, idx) {
+      var pos = { lat: item.latitude, lng: item.longitude };
+
+      // 마커 생성 (번호 레이블 포함)
+      var marker = new google.maps.Marker({
+        position  : pos,
+        map       : map,
+        title     : item.name,
+        label     : {
+          text     : String(idx + 1),
+          color    : '#ffffff',
+          fontWeight: 'bold',
+          fontSize : '12px'
+        },
+        animation: google.maps.Animation.DROP
+      });
+
+      // 마커 클릭 시 정보창 표시
+      (function(m, d) {
+        m.addListener('click', function() {
+          infoWindow.setContent(
+            '<div style="font-family:Noto Sans KR,sans-serif;padding:4px 2px;min-width:160px">' +
+            '<div style="font-weight:700;font-size:1rem;margin-bottom:6px">👤 ' + d.name + '</div>' +
+            '<div style="font-size:.8rem;color:#5f6368">🕐 ' + d.timestamp + '</div>' +
+            '<div style="font-size:.75rem;color:#5f6368;margin-top:4px">' +
+            '위도 ' + d.latitude.toFixed(6) + '<br>경도 ' + d.longitude.toFixed(6) + '</div>' +
+            '</div>'
+          );
+          infoWindow.open(map, m);
+
+          // 사이드바 해당 카드 활성화
+          highlightCard(d.name);
+        });
+      })(marker, item);
+
+      markers.push(marker);
+      bounds.extend(pos);
+    });
+
+    // 모든 마커가 보이도록 지도 범위 조정
+    if (markers.length === 1) {
+      map.setCenter(bounds.getCenter());
+      map.setZoom(16);
+    } else {
+      map.fitBounds(bounds);
+    }
+  }
+
+  // ============================================================
+  // 📋 renderSidebar() - 학생 목록 사이드바 업데이트
+  // ============================================================
+  function renderSidebar(data) {
+    var listEl  = document.getElementById('studentList');
+    var countEl = document.getElementById('countBadge');
+
+    countEl.textContent = data.length + '명';
+
+    if (data.length === 0) {
+      listEl.innerHTML =
+        '<div class="empty-state">' +
+        '<div class="icon">📭</div>' +
+        '<p>아직 위치를 전송한 학생이 없습니다.</p>' +
+        '</div>';
+      return;
+    }
+
+    listEl.innerHTML = '';
+
+    // 최신 순으로 정렬 (배열 역순)
+    var sorted = data.slice().reverse();
+
+    sorted.forEach(function(item, idx) {
+      var initial = item.name.charAt(0) || '?'; // 이름 첫 글자 (아바타)
+
+      var card = document.createElement('div');
+      card.className    = 'student-card';
+      card.dataset.name = item.name;
+      card.innerHTML    =
+        '<div class="student-avatar">' + initial + '</div>' +
+        '<div class="student-info">' +
+        '<div class="student-name">' + escapeHtml(item.name) + '</div>' +
+        '<div class="student-time">' + item.timestamp + '</div>' +
+        '<div class="student-coords">' +
+        item.latitude.toFixed(4) + ', ' + item.longitude.toFixed(4) +
+        '</div>' +
+        '</div>';
+
+      // 카드 클릭 시 해당 마커로 지도 이동 및 정보창 열기
+      card.addEventListener('click', function() {
+        var markerIdx = data.indexOf(item); // 원본 배열 인덱스
+        if (markers[markerIdx]) {
+          map.panTo(markers[markerIdx].getPosition());
+          map.setZoom(17);
+          google.maps.event.trigger(markers[markerIdx], 'click');
+        }
+        highlightCard(item.name);
+      });
+
+      listEl.appendChild(card);
+    });
+  }
+
+  // ============================================================
+  // 🎨 UI 헬퍼 함수들
+  // ============================================================
+
+  // 사이드바 카드 활성화
+  function highlightCard(name) {
+    document.querySelectorAll('.student-card').forEach(function(c) {
+      c.classList.toggle('active', c.dataset.name === name);
+    });
+  }
+
+  // 로딩 오버레이 숨기기
+  function hideLoading() {
+    document.getElementById('loadingOverlay').classList.add('hidden');
+  }
+
+  // 토스트 메시지 표시
+  function showToast(msg) {
+    var el = document.getElementById('toast');
+    el.textContent = msg;
+    el.classList.add('show');
+    setTimeout(function() { el.classList.remove('show'); }, 3500);
+  }
+
+  // HTML 특수문자 이스케이프 (XSS 방지)
+  function escapeHtml(str) {
+    return str.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  }
+
+  // ============================================================
+  // ⏱️ 카운트다운 & 자동 갱신
+  // ============================================================
+  function startCountdown() {
+    countdown = REFRESH_INTERVAL;
+    timerID = setInterval(function() {
+      countdown--;
+      document.getElementById('countdown').textContent = countdown + '초 후 갱신';
+      if (countdown <= 0) {
+        loadData();
+      }
+    }, 1000);
+  }
+
+  function resetCountdown() {
+    clearInterval(timerID);
+    countdown = REFRESH_INTERVAL;
+    document.getElementById('countdown').textContent = countdown + '초 후 갱신';
+    startCountdown();
+  }
+</script>
+
+</body>
+</html>
