@@ -5,21 +5,18 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0" />
   <title>내 위치 전송</title>
 
-  <!-- Google Fonts: 학생용 친근한 폰트 -->
   <link href="https://fonts.googleapis.com/css2?family=Gowun+Dodum&family=Black+Han+Sans&display=swap" rel="stylesheet" />
 
   <style>
-    /* ── 리셋 & 기본 변수 ── */
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
     :root {
       --bg         : #0d1117;
       --surface    : #161b22;
       --border     : #30363d;
-      --accent     : #3fb950;        /* 초록 - 위치 전송 성공 느낌 */
+      --accent     : #3fb950;
       --accent-glow: rgba(63,185,80,.35);
       --warn       : #f85149;
-      --warn-glow  : rgba(248,81,73,.3);
       --text-main  : #e6edf3;
       --text-muted : #8b949e;
       --radius     : 16px;
@@ -33,7 +30,6 @@
       overflow: hidden;
     }
 
-    /* ── 배경 애니메이션 ── */
     body::before {
       content: '';
       position: fixed; inset: 0; z-index: 0;
@@ -43,7 +39,6 @@
       pointer-events: none;
     }
 
-    /* ── 레이아웃 ── */
     .wrapper {
       position: relative; z-index: 1;
       display: flex;
@@ -52,10 +47,9 @@
       justify-content: center;
       height: 100vh;
       padding: 24px;
-      gap: 28px;
+      gap: 22px;
     }
 
-    /* ── 상단 타이틀 ── */
     .title-block { text-align: center; }
 
     .title-block .icon {
@@ -74,7 +68,6 @@
       font-family: 'Black Han Sans', sans-serif;
       font-size: clamp(1.6rem, 5vw, 2.4rem);
       letter-spacing: -.5px;
-      color: var(--text-main);
     }
 
     .title-block p {
@@ -83,35 +76,26 @@
       color: var(--text-muted);
     }
 
-    /* ── 이름 입력 카드 ── */
+    /* 이름 입력 카드 */
     .card {
-      width: 100%;
-      max-width: 400px;
+      width: 100%; max-width: 400px;
       background: var(--surface);
       border: 1px solid var(--border);
       border-radius: var(--radius);
-      padding: 24px;
-      display: flex;
-      flex-direction: column;
-      gap: 14px;
+      padding: 20px;
+      display: flex; flex-direction: column; gap: 12px;
     }
 
-    .card label {
-      font-size: .85rem;
-      color: var(--text-muted);
-      letter-spacing: .5px;
-    }
+    .card label { font-size: .85rem; color: var(--text-muted); letter-spacing: .5px; }
 
     .card input {
-      width: 100%;
-      padding: 12px 16px;
+      width: 100%; padding: 12px 16px;
       background: var(--bg);
       border: 1px solid var(--border);
       border-radius: 10px;
       color: var(--text-main);
       font-family: 'Gowun Dodum', sans-serif;
-      font-size: 1rem;
-      outline: none;
+      font-size: 1rem; outline: none;
       transition: border-color .2s;
     }
 
@@ -122,74 +106,102 @@
 
     .card input::placeholder { color: var(--text-muted); }
 
-    /* ── 전송 버튼 ── */
+    /* 추적 시작/중지 버튼 */
     .send-btn {
-      width: 100%;
-      max-width: 400px;
+      width: 100%; max-width: 400px;
       padding: 18px;
-      background: var(--accent);
-      border: none;
-      border-radius: var(--radius);
-      color: #0d1117;
+      border: none; border-radius: var(--radius);
       font-family: 'Black Han Sans', sans-serif;
-      font-size: 1.25rem;
-      letter-spacing: 1px;
+      font-size: 1.2rem; letter-spacing: 1px;
       cursor: pointer;
-      position: relative;
-      overflow: hidden;
-      transition: transform .15s, box-shadow .15s;
+      transition: transform .15s, box-shadow .15s, background .3s;
+    }
+
+    /* 추적 중지 상태 (초록) */
+    .send-btn.idle {
+      background: var(--accent);
+      color: #0d1117;
       box-shadow: 0 4px 24px var(--accent-glow);
     }
 
-    .send-btn:hover:not(:disabled) {
-      transform: translateY(-2px);
-      box-shadow: 0 8px 32px var(--accent-glow);
+    /* 추적 진행 상태 (빨강) */
+    .send-btn.tracking {
+      background: var(--warn);
+      color: #fff;
+      box-shadow: 0 4px 24px rgba(248,81,73,.4);
+      animation: pulse-btn 2s ease-in-out infinite;
     }
 
-    .send-btn:active:not(:disabled) { transform: translateY(0); }
+    @keyframes pulse-btn {
+      0%, 100% { box-shadow: 0 4px 24px rgba(248,81,73,.4); }
+      50%       { box-shadow: 0 4px 40px rgba(248,81,73,.7); }
+    }
 
-    /* 버튼 로딩 상태 */
-    .send-btn:disabled {
-      opacity: .6;
-      cursor: not-allowed;
+    .send-btn:hover { transform: translateY(-2px); }
+    .send-btn:active { transform: translateY(0); }
+
+    /* 카운트다운 바 */
+    .progress-wrap {
+      width: 100%; max-width: 400px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 16px 20px;
+      display: none; /* 추적 시작 전 숨김 */
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .progress-wrap.visible { display: flex; }
+
+    .progress-info {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: .82rem;
+      color: var(--text-muted);
+    }
+
+    .progress-info .next-label { color: var(--accent); font-weight: 600; }
+
+    .progress-bar-bg {
+      width: 100%; height: 6px;
       background: var(--border);
+      border-radius: 3px;
+      overflow: hidden;
     }
 
-    /* 버튼 내 스피너 */
-    .send-btn .spinner {
-      display: none;
-      width: 20px; height: 20px;
-      border: 2.5px solid rgba(0,0,0,.25);
-      border-top-color: #0d1117;
-      border-radius: 50%;
-      animation: spin .7s linear infinite;
-      margin: 0 auto;
-    }
-
-    @keyframes spin { to { transform: rotate(360deg); } }
-
-    .send-btn.loading .btn-text { display: none; }
-    .send-btn.loading .spinner  { display: block; }
-
-    /* ── 상태 메시지 ── */
-    .status {
+    .progress-bar-fill {
+      height: 100%;
+      background: var(--accent);
+      border-radius: 3px;
       width: 100%;
-      max-width: 400px;
-      padding: 14px 18px;
+      transition: width 1s linear;
+    }
+
+    /* 좌표 미리보기 */
+    .coords-preview {
+      font-size: .78rem;
+      color: var(--text-muted);
+      text-align: center;
+    }
+
+    .coords-preview span { color: var(--accent); }
+
+    /* 상태 메시지 */
+    .status {
+      width: 100%; max-width: 400px;
+      padding: 12px 18px;
       border-radius: 12px;
-      font-size: .9rem;
+      font-size: .88rem;
       text-align: center;
       border: 1px solid transparent;
-      opacity: 0;
-      transform: translateY(8px);
+      opacity: 0; transform: translateY(8px);
       transition: opacity .3s, transform .3s;
       pointer-events: none;
     }
 
-    .status.visible {
-      opacity: 1;
-      transform: translateY(0);
-    }
+    .status.visible { opacity: 1; transform: translateY(0); }
 
     .status.success {
       background: rgba(63,185,80,.1);
@@ -203,18 +215,8 @@
       color: var(--warn);
     }
 
-    /* ── 좌표 미리보기 ── */
-    .coords-preview {
-      font-size: .78rem;
-      color: var(--text-muted);
-      text-align: center;
-    }
-
-    .coords-preview span { color: var(--accent); }
-
-    /* ── 모바일 최적화 ── */
     @media (max-width: 480px) {
-      .send-btn { font-size: 1.1rem; padding: 16px; }
+      .send-btn { font-size: 1.05rem; padding: 16px; }
     }
   </style>
 </head>
@@ -224,30 +226,44 @@
 
   <!-- 타이틀 -->
   <div class="title-block">
-    <span class="icon">📍</span>
+    <span class="icon" id="titleIcon">📍</span>
     <h1>현재 위치 전송</h1>
-    <p>버튼을 눌러 선생님께 위치를 알려주세요</p>
+    <p id="titleDesc">버튼을 눌러 자동 위치 전송을 시작하세요</p>
   </div>
 
   <!-- 이름 입력 카드 -->
   <div class="card">
-    <label for="studentName">이름 또는 학번</label>
+    <label for="studentName">꿈이름</label>
     <input
       type="text"
       id="studentName"
-      placeholder="예) 홍길동 또는 20241001"
+      placeholder="예) 홍길동 "
       maxlength="30"
       autocomplete="off"
     />
   </div>
 
-  <!-- 전송 버튼 -->
-  <button class="send-btn" id="sendBtn" onclick="sendLocation()">
-    <span class="btn-text">📡 내 위치 전송</span>
-    <span class="spinner"></span>
+  <!-- 추적 시작/중지 버튼 -->
+  <button class="send-btn idle" id="toggleBtn" onclick="toggleTracking()">
+    🟢 위치 추적 시작
   </button>
 
-  <!-- 좌표 미리보기 (전송 후 표시) -->
+  <!-- 카운트다운 진행 바 (추적 중에만 표시) -->
+  <div class="progress-wrap" id="progressWrap">
+    <div class="progress-info">
+      <span>다음 전송까지</span>
+      <span class="next-label" id="nextLabel">60초</span>
+    </div>
+    <div class="progress-bar-bg">
+      <div class="progress-bar-fill" id="progressFill"></div>
+    </div>
+    <div class="progress-info">
+      <span id="sendCount">총 0회 전송됨</span>
+      <span id="lastSentTime"></span>
+    </div>
+  </div>
+
+  <!-- 좌표 미리보기 -->
   <div class="coords-preview" id="coordsPreview"></div>
 
   <!-- 상태 메시지 -->
@@ -257,116 +273,208 @@
 
 <script>
   // ============================================================
-  // ⚙️ 설정값 - Apps Script 웹앱 URL을 여기에 붙여넣으세요
+  // ⚙️ 설정값
   // ============================================================
   var APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzJ6ce-mZmO5yggSQ-36ALXHQ7XNbHyXXS_xPoFVwUMZ6L1z9skk4L8RTHe8Pioc__1/exec';
-  var SEND_INTERVAL_SEC = 600; // 60초 = 1분
-// 예) 30초마다: 30
-// 예) 5분마다:  300
-// 예) 10분마다: 600
+  var SEND_INTERVAL_SEC = 600; // 자동 전송 간격 (초) — 원하는 값으로 변경
+
   // ============================================================
-  // 📡 sendLocation() - 위치 수집 후 서버로 전송
+  // 전역 상태 변수
   // ============================================================
-  function sendLocation() {
+  var isTracking  = false;  // 추적 중 여부
+  var sendCount   = 0;      // 총 전송 횟수
+  var intervalID  = null;   // setInterval ID
+  var countdownID = null;   // 카운트다운 setInterval ID
+  var remaining   = SEND_INTERVAL_SEC; // 다음 전송까지 남은 초
+
+  // ============================================================
+  // 🔁 toggleTracking() - 추적 시작 / 중지 토글
+  // ============================================================
+  function toggleTracking() {
+    if (isTracking) {
+      stopTracking();
+    } else {
+      startTracking();
+    }
+  }
+
+  // ============================================================
+  // ▶️ startTracking() - 자동 추적 시작
+  // ============================================================
+  function startTracking() {
     var nameInput = document.getElementById('studentName').value.trim();
 
-    // 이름/학번 미입력 확인
     if (!nameInput) {
-      showStatus('이름 또는 학번을 입력해주세요.', 'error');
+      showStatus('꿈이름을 입력해주세요.', 'error');
       document.getElementById('studentName').focus();
       return;
     }
 
-    // 브라우저 GPS 지원 여부 확인
     if (!navigator.geolocation) {
       showStatus('이 브라우저는 위치 서비스를 지원하지 않습니다.', 'error');
       return;
     }
 
-    // 버튼을 로딩 상태로 변경
-    setLoading(true);
+    isTracking = true;
+
+    // 이름 입력 잠금 (추적 중 변경 방지)
+    document.getElementById('studentName').disabled = true;
+
+    // 버튼 상태 변경
+    var btn = document.getElementById('toggleBtn');
+    btn.textContent = '🔴 위치 추적 중지';
+    btn.classList.remove('idle');
+    btn.classList.add('tracking');
+
+    // 타이틀 변경
+    document.getElementById('titleIcon').textContent = '🛰️';
+    document.getElementById('titleDesc').textContent = '위치를 자동으로 전송하고 있습니다';
+
+    // 카운트다운 바 표시
+    document.getElementById('progressWrap').classList.add('visible');
+
+    // 즉시 1회 전송
+    sendOnce();
+
+    // 이후 일정 간격마다 반복 전송
+    intervalID = setInterval(function() {
+      sendOnce();
+    }, SEND_INTERVAL_SEC * 1000);
+
+    // 카운트다운 시작
+    startCountdown();
+  }
+
+  // ============================================================
+  // ⏹️ stopTracking() - 자동 추적 중지
+  // ============================================================
+  function stopTracking() {
+    isTracking = false;
+
+    clearInterval(intervalID);
+    clearInterval(countdownID);
+
+    // 이름 입력 잠금 해제
+    document.getElementById('studentName').disabled = false;
+
+    // 버튼 상태 복원
+    var btn = document.getElementById('toggleBtn');
+    btn.textContent = '🟢 위치 전송 시작';
+    btn.classList.remove('tracking');
+    btn.classList.add('idle');
+
+    // 타이틀 복원
+    document.getElementById('titleIcon').textContent = '📍';
+    document.getElementById('titleDesc').textContent = '버튼을 눌러 자동 위치 추적을 시작하세요';
+
+    // 카운트다운 바 숨김
+    document.getElementById('progressWrap').classList.remove('visible');
+
+    showStatus('⏹️ 위치 전송이 중지되었습니다.', 'error');
+  }
+
+  // ============================================================
+  // 📡 sendOnce() - GPS 수집 후 1회 전송
+  // ============================================================
+  function sendOnce() {
+    var name = document.getElementById('studentName').value.trim();
+
     showStatus('📡 위치 정보를 가져오는 중...', 'success');
 
-    // GPS 좌표 수집
     navigator.geolocation.getCurrentPosition(
       function(position) {
         var lat = position.coords.latitude;
         var lng = position.coords.longitude;
 
-        // 좌표 미리보기 표시
+        // 좌표 미리보기 갱신
         document.getElementById('coordsPreview').innerHTML =
           '위도 <span>' + lat.toFixed(6) + '</span> &nbsp;|&nbsp; 경도 <span>' + lng.toFixed(6) + '</span>';
 
-        // 서버로 POST 전송
-        postToServer({ name: nameInput, latitude: lat, longitude: lng });
+        // 서버 전송
+        postToServer({ name: name, latitude: lat, longitude: lng });
       },
       function(err) {
-        // 위치 수집 실패 처리
         var messages = {
-          1: '위치 접근이 거부되었습니다. 브라우저 설정에서 위치 권한을 허용해주세요.',
-          2: '위치 정보를 가져올 수 없습니다. 네트워크나 GPS를 확인해주세요.',
-          3: '위치 요청 시간이 초과되었습니다. 다시 시도해주세요.'
+          1: '위치 권한이 거부되었습니다. 추적을 중지합니다.',
+          2: '위치 정보를 가져올 수 없습니다.',
+          3: '위치 요청 시간이 초과되었습니다.'
         };
-        showStatus(messages[err.code] || '알 수 없는 오류가 발생했습니다.', 'error');
-        setLoading(false);
+        showStatus('⚠️ ' + (messages[err.code] || '오류 발생'), 'error');
+        // 권한 거부 시 추적 자동 중지
+        if (err.code === 1) stopTracking();
       },
-      {
-        enableHighAccuracy: true,  // 고정밀 GPS 사용
-        timeout: 10000,            // 10초 제한
-        maximumAge: 0              // 캐시 사용 안 함
-      }
+      { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
     );
   }
 
   // ============================================================
-  // 📤 postToServer() - Apps Script 웹앱으로 좌표 전송
+  // 📤 postToServer() - Apps Script로 좌표 전송
   // ============================================================
   function postToServer(data) {
-    // CORS 우회를 위해 no-cors 모드로 전송
-    // (Apps Script는 preflight 없이 POST를 받을 수 있음)
     fetch(APPS_SCRIPT_URL, {
-      method: 'POST',
-      mode: 'no-cors',   // Apps Script CORS 정책 우회
+      method : 'POST',
+      mode   : 'no-cors',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(data)
+      body   : JSON.stringify(data)
     })
     .then(function() {
-      // no-cors 모드에서는 응답 본문을 읽을 수 없으므로 성공으로 간주
-      showStatus('✅ 위치가 성공적으로 전송되었습니다!', 'success');
+      sendCount++;
+      var now = new Date();
+      var timeStr = now.getHours() + ':' +
+                    String(now.getMinutes()).padStart(2, '0') + ':' +
+                    String(now.getSeconds()).padStart(2, '0');
+
+      // 전송 횟수 및 마지막 전송 시각 업데이트
+      document.getElementById('sendCount').textContent = '총 ' + sendCount + '회 전송됨';
+      document.getElementById('lastSentTime').textContent = '마지막: ' + timeStr;
+
+      showStatus('✅ 위치 전송 완료 (' + timeStr + ')', 'success');
+
+      // 카운트다운 리셋
+      resetCountdown();
     })
     .catch(function(err) {
       showStatus('❌ 전송 실패: ' + err.message, 'error');
-    })
-    .finally(function() {
-      setLoading(false);
     });
   }
 
   // ============================================================
-  // 🎨 UI 헬퍼 함수들
+  // ⏱️ 카운트다운 바 관련 함수
   // ============================================================
+  function startCountdown() {
+    remaining = SEND_INTERVAL_SEC;
+    updateCountdownUI();
 
-  // 상태 메시지 표시
+    countdownID = setInterval(function() {
+      remaining--;
+      if (remaining < 0) remaining = 0;
+      updateCountdownUI();
+    }, 1000);
+  }
+
+  function resetCountdown() {
+    clearInterval(countdownID);
+    startCountdown();
+  }
+
+  function updateCountdownUI() {
+    document.getElementById('nextLabel').textContent = remaining + '초';
+    var pct = (remaining / SEND_INTERVAL_SEC) * 100;
+    document.getElementById('progressFill').style.width = pct + '%';
+  }
+
+  // ============================================================
+  // 🎨 UI 헬퍼
+  // ============================================================
   function showStatus(msg, type) {
     var el = document.getElementById('statusMsg');
     el.textContent = msg;
     el.className = 'status ' + type + ' visible';
   }
 
-  // 버튼 로딩 상태 토글
-  function setLoading(isLoading) {
-    var btn = document.getElementById('sendBtn');
-    btn.disabled = isLoading;
-    if (isLoading) {
-      btn.classList.add('loading');
-    } else {
-      btn.classList.remove('loading');
-    }
-  }
-
-  // 엔터키로도 전송 가능
+  // 엔터키로 시작 가능
   document.getElementById('studentName').addEventListener('keydown', function(e) {
-    if (e.key === 'Enter') sendLocation();
+    if (e.key === 'Enter') toggleTracking();
   });
 </script>
 
