@@ -106,7 +106,7 @@
 
     .card input::placeholder { color: var(--text-muted); }
 
-    /* 전송 시작/중지 버튼 */
+    /* 추적 시작 버튼 */
     .send-btn {
       width: 100%; max-width: 400px;
       padding: 18px;
@@ -114,27 +114,34 @@
       font-family: 'Black Han Sans', sans-serif;
       font-size: 1.2rem; letter-spacing: 1px;
       cursor: pointer;
-      transition: transform .15s, box-shadow .15s, background .3s;
-    }
-
-    /* 전송 중지 상태 (초록) */
-    .send-btn.idle {
+      transition: transform .15s, box-shadow .15s;
       background: var(--accent);
       color: #0d1117;
       box-shadow: 0 4px 24px var(--accent-glow);
     }
 
-    /* 전송 진행 상태 (빨강) */
-    .send-btn.tracking {
-      background: var(--warn);
-      color: #fff;
-      box-shadow: 0 4px 24px rgba(248,81,73,.4);
-      animation: pulse-btn 2s ease-in-out infinite;
+    /* 추적 시작 후 버튼 숨김 */
+    .send-btn.hidden { display: none; }
+
+    /* 추적 중 상태 표시 배너 */
+    .tracking-banner {
+      width: 100%; max-width: 400px;
+      padding: 16px 20px;
+      background: rgba(63,185,80,.1);
+      border: 1px solid rgba(63,185,80,.35);
+      border-radius: var(--radius);
+      text-align: center;
+      font-size: .95rem;
+      color: var(--accent);
+      display: none;
+      animation: pulse-glow 2s ease-in-out infinite;
     }
 
-    @keyframes pulse-btn {
-      0%, 100% { box-shadow: 0 4px 24px rgba(248,81,73,.4); }
-      50%       { box-shadow: 0 4px 40px rgba(248,81,73,.7); }
+    .tracking-banner.visible { display: block; }
+
+    @keyframes pulse-glow {
+      0%, 100% { box-shadow: 0 0 0 rgba(63,185,80,0); }
+      50%       { box-shadow: 0 0 18px rgba(63,185,80,.25); }
     }
 
     .send-btn:hover { transform: translateY(-2px); }
@@ -147,7 +154,7 @@
       border: 1px solid var(--border);
       border-radius: var(--radius);
       padding: 16px 20px;
-      display: none; /* 전송 시작 전 숨김 */
+      display: none; /* 추적 시작 전 숨김 */
       flex-direction: column;
       gap: 10px;
     }
@@ -228,27 +235,32 @@
   <div class="title-block">
     <span class="icon" id="titleIcon">📍</span>
     <h1>현재 위치 전송</h1>
-    <p id="titleDesc">버튼을 눌러 자동 위치 전송을 시작하세요</p>
+    <p id="titleDesc">버튼을 눌러 자동 위치 추적을 시작하세요</p>
   </div>
 
   <!-- 이름 입력 카드 -->
   <div class="card">
-    <label for="studentName">꿈이름</label>
+    <label for="studentName">이름 또는 학번</label>
     <input
       type="text"
       id="studentName"
-      placeholder="예) 홍길동 "
+      placeholder="예) 홍길동 또는 20241001"
       maxlength="30"
       autocomplete="off"
     />
   </div>
 
-  <!-- 전송 시작/중지 버튼 -->
-  <button class="send-btn idle" id="toggleBtn" onclick="toggleTracking()">
-    🟢 위치 전송 시작
+  <!-- 추적 시작 버튼 (추적 시작 후 숨겨짐) -->
+  <button class="send-btn" id="startBtn" onclick="startTracking()">
+    🟢 위치 추적 시작
   </button>
 
-  <!-- 카운트다운 진행 바 (전송 중에만 표시) -->
+  <!-- 추적 중 상태 배너 (추적 시작 후 표시) -->
+  <div class="tracking-banner" id="trackingBanner">
+    🛰️ 위치 추적 중&nbsp;&nbsp;—&nbsp;&nbsp;자동으로 전송되고 있습니다
+  </div>
+
+  <!-- 카운트다운 진행 바 (추적 중에만 표시) -->
   <div class="progress-wrap" id="progressWrap">
     <div class="progress-info">
       <span>다음 전송까지</span>
@@ -275,37 +287,26 @@
   // ============================================================
   // ⚙️ 설정값
   // ============================================================
-  var APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzJ6ce-mZmO5yggSQ-36ALXHQ7XNbHyXXS_xPoFVwUMZ6L1z9skk4L8RTHe8Pioc__1/exec';
-  var SEND_INTERVAL_SEC = 3600; // 자동 전송 간격 (초) — 원하는 값으로 변경
+  var APPS_SCRIPT_URL   = 'YOUR_APPS_SCRIPT_WEBAPP_URL_HERE'; // Apps Script 웹앱 URL
+  var SEND_INTERVAL_SEC = 60; // 자동 전송 간격 (초) — 원하는 값으로 변경
 
   // ============================================================
   // 전역 상태 변수
   // ============================================================
-  var isTracking  = false;  // 전송 중 여부
+  var isTracking  = false;  // 추적 중 여부
   var sendCount   = 0;      // 총 전송 횟수
   var intervalID  = null;   // setInterval ID
   var countdownID = null;   // 카운트다운 setInterval ID
   var remaining   = SEND_INTERVAL_SEC; // 다음 전송까지 남은 초
 
   // ============================================================
-  // 🔁 toggleTracking() - 전송 시작 / 중지 토글
-  // ============================================================
-  function toggleTracking() {
-    if (isTracking) {
-      stopTracking();
-    } else {
-      startTracking();
-    }
-  }
-
-  // ============================================================
-  // ▶️ startTracking() - 자동 전송 시작
+  // ▶️ startTracking() - 자동 추적 시작 (한 번 시작하면 중지 불가)
   // ============================================================
   function startTracking() {
     var nameInput = document.getElementById('studentName').value.trim();
 
     if (!nameInput) {
-      showStatus('꿈이름을 입력해주세요.', 'error');
+      showStatus('이름 또는 학번을 입력해주세요.', 'error');
       document.getElementById('studentName').focus();
       return;
     }
@@ -317,11 +318,12 @@
 
     isTracking = true;
 
-    // 이름 입력 잠금 (전송 중 변경 방지)
+    // 이름 입력 잠금 (추적 중 변경 방지)
     document.getElementById('studentName').disabled = true;
 
-    // 버튼 상태 변경
-  
+    // 시작 버튼 숨기고 추적 중 배너 표시
+    document.getElementById('startBtn').classList.add('hidden');
+    document.getElementById('trackingBanner').classList.add('visible');
 
     // 타이틀 변경
     document.getElementById('titleIcon').textContent = '🛰️';
@@ -340,34 +342,6 @@
 
     // 카운트다운 시작
     startCountdown();
-  }
-
-  // ============================================================
-  // ⏹️ stopTracking() - 자동 전송 중지
-  // ============================================================
-  function stopTracking() {
-    isTracking = false;
-
-    clearInterval(intervalID);
-    clearInterval(countdownID);
-
-    // 이름 입력 잠금 해제
-    document.getElementById('studentName').disabled = false;
-
-    // 버튼 상태 복원
-    var btn = document.getElementById('toggleBtn');
-    btn.textContent = '🟢 위치 전송 시작';
-    btn.classList.remove('tracking');
-    btn.classList.add('idle');
-
-    // 타이틀 복원
-    document.getElementById('titleIcon').textContent = '📍';
-    document.getElementById('titleDesc').textContent = '버튼을 눌러 자동 위치 전송을 시작하세요';
-
-    // 카운트다운 바 숨김
-    document.getElementById('progressWrap').classList.remove('visible');
-
-    showStatus('⏹️ 위치 전송이 중지되었습니다.', 'error');
   }
 
   // ============================================================
@@ -392,13 +366,12 @@
       },
       function(err) {
         var messages = {
-          1: '위치 권한이 거부되었습니다. 전송을 중지합니다.',
+          1: '위치 권한이 거부되었습니다. 추적을 중지합니다.',
           2: '위치 정보를 가져올 수 없습니다.',
           3: '위치 요청 시간이 초과되었습니다.'
         };
         showStatus('⚠️ ' + (messages[err.code] || '오류 발생'), 'error');
-        // 권한 거부 시 전송 자동 중지
-        if (err.code === 1) stopTracking();
+        // 권한 거부 시 상태 메시지만 표시 (중지 기능 없음)
       },
       { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
     );
@@ -471,7 +444,7 @@
 
   // 엔터키로 시작 가능
   document.getElementById('studentName').addEventListener('keydown', function(e) {
-    if (e.key === 'Enter') toggleTracking();
+    if (e.key === 'Enter') startTracking();
   });
 </script>
 
