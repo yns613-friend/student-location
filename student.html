@@ -276,7 +276,7 @@
   // ⚙️ 설정값
   // ============================================================
   var APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzJ6ce-mZmO5yggSQ-36ALXHQ7XNbHyXXS_xPoFVwUMZ6L1z9skk4L8RTHe8Pioc__1/exec';
-  var SEND_INTERVAL_SEC = 600; // 자동 전송 간격 (초) — 원하는 값으로 변경
+  var SEND_INTERVAL_SEC = 3600; // 자동 전송 간격 (초) — 원하는 값으로 변경
 
   // ============================================================
   // 전역 상태 변수
@@ -321,10 +321,7 @@
     document.getElementById('studentName').disabled = true;
 
     // 버튼 상태 변경
-    var btn = document.getElementById('toggleBtn');
-    btn.textContent = '🔴 위치 전송 중지';
-    btn.classList.remove('idle');
-    btn.classList.add('tracking');
+  
 
     // 타이틀 변경
     document.getElementById('titleIcon').textContent = '🛰️';
