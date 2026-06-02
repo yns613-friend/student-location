@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0" />
-  <title>내 위치 전송</title>
+  <title>꿈쟁이 위치 안전 시스템</title>
 
   <link href="https://fonts.googleapis.com/css2?family=Gowun+Dodum&family=Black+Han+Sans&display=swap" rel="stylesheet" />
 
@@ -240,11 +240,11 @@
 
   <!-- 이름 입력 카드 -->
   <div class="card">
-    <label for="studentName">이름 또는 학번</label>
+    <label for="studentName">꿈이름</label>
     <input
       type="text"
       id="studentName"
-      placeholder="예) 홍길동 또는 20241001"
+      placeholder="예) 넘치는 "
       maxlength="30"
       autocomplete="off"
     />
@@ -287,8 +287,8 @@
   // ============================================================
   // ⚙️ 설정값
   // ============================================================
-  var APPS_SCRIPT_URL   = 'YOUR_APPS_SCRIPT_WEBAPP_URL_HERE'; // Apps Script 웹앱 URL
-  var SEND_INTERVAL_SEC = 60; // 자동 전송 간격 (초) — 원하는 값으로 변경
+  var APPS_SCRIPT_URL   = '147d3pWJi-F_7vyakT0-1GzxrQ31hE9W0bI1VYmqsaMs'; // Apps Script 웹앱 URL
+  var SEND_INTERVAL_SEC = 3600; // 자동 전송 간격 (초) — 원하는 값으로 변경
 
   // ============================================================
   // 전역 상태 변수
@@ -306,7 +306,7 @@
     var nameInput = document.getElementById('studentName').value.trim();
 
     if (!nameInput) {
-      showStatus('이름 또는 학번을 입력해주세요.', 'error');
+      showStatus('꿈이름을 입력해주세요.', 'error');
       document.getElementById('studentName').focus();
       return;
     }
@@ -398,7 +398,7 @@
       document.getElementById('sendCount').textContent = '총 ' + sendCount + '회 전송됨';
       document.getElementById('lastSentTime').textContent = '마지막: ' + timeStr;
 
-      showStatus('✅ 위치 전송 완료 (' + timeStr + ')', 'success');
+      showStatus('✅ 안전을 위한 꿈쟁이 위치 전송 완료 (' + timeStr + ')', 'success');
 
       // 카운트다운 리셋
       resetCountdown();
