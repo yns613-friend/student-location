@@ -10,7 +10,6 @@
 
   <!-- Google Maps API - YOUR_MAPS_API_KEY를 실제 키로 교체 -->
   <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyD121ImvyNTssr490pwiUnPo2B3IaNAwxo&callback=initMap" async defer></script>
-
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -283,6 +282,9 @@
     <div class="refresh-dot"></div>
     <span id="countdown">30초 후 갱신</span>
   </div>
+  <div class="refresh-badge" style="background:#E8F0FE;border-color:#C2D7F8">
+    <span id="lastUpdate" style="color:#1a73e8">갱신 대기 중</span>
+  </div>
   <button class="refresh-btn" onclick="loadData()">↻ 새로고침</button>
 </header>
 
@@ -315,7 +317,7 @@
   // ============================================================
   // ⚙️ 설정값 - 여기를 수정하세요
   // ============================================================
-  var APPS_SCRIPT_URL   = 'https://script.google.com/macros/s/AKfycbzJ6ce-mZmO5yggSQ-36ALXHQ7XNbHyXXS_xPoFVwUMZ6L1z9skk4L8RTHe8Pioc__1/exec'; // Apps Script 웹앱 URL
+   var APPS_SCRIPT_URL   = 'https://script.google.com/macros/s/AKfycbzJ6ce-mZmO5yggSQ-36ALXHQ7XNbHyXXS_xPoFVwUMZ6L1z9skk4L8RTHe8Pioc__1/exec'; // Apps Script 웹앱 URL
   var SPREADSHEET_ID    = '147d3pWJi-F_7vyakT0-1GzxrQ31hE9W0bI1VYmqsaMs';          // 스프레드시트 ID
   var SHEET_GID         = '0';                                  // 시트 GID (기본 시트: 0)
   var REFRESH_INTERVAL  = 300;                                   // 자동 갱신 주기 (초)
@@ -370,11 +372,19 @@
         return res.text();
       })
       .then(function(csv) {
-        var data = parseCSV(csv);
+        var allData = parseCSV(csv);
+        var data = getLatestPerStudent(allData); // 학생별 최신 위치만 추출
         renderMap(data);
         renderSidebar(data);
         hideLoading();
         resetCountdown();
+
+        // 마지막 갱신 시각 표시
+        var now = new Date();
+        document.getElementById('lastUpdate').textContent =
+          '✓ ' + String(now.getHours()).padStart(2,'0') + ':' +
+          String(now.getMinutes()).padStart(2,'0') + ':' +
+          String(now.getSeconds()).padStart(2,'0') + ' 갱신됨';
       })
       .catch(function(err) {
         hideLoading();
@@ -409,6 +419,30 @@
       });
     }
 
+    return result;
+  }
+
+  // ============================================================
+  // 🆕 getLatestPerStudent() - 같은 이름(학번)은 가장 최신 위치 1개만 남김
+  //    스프레드시트에는 학생이 보낼 때마다 행이 쌓이므로,
+  //    이름별로 마지막(가장 최근) 기록만 골라 지도에 표시한다.
+  // ============================================================
+  function getLatestPerStudent(data) {
+    var latestMap = {}; // { 이름: 최신데이터 }
+
+    data.forEach(function(item) {
+      var key = item.name;
+      // 타임스탬프 문자열 비교로 더 최신인 기록을 보관
+      if (!latestMap[key] || item.timestamp >= latestMap[key].timestamp) {
+        latestMap[key] = item;
+      }
+    });
+
+    // 객체를 배열로 변환
+    var result = [];
+    for (var name in latestMap) {
+      if (latestMap.hasOwnProperty(name)) result.push(latestMap[name]);
+    }
     return result;
   }
 
