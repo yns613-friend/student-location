@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0" />
-  <title>꿈쟁이 위치 안전 시스템</title>
+  <title>내 위치 전송</title>
 
   <link href="https://fonts.googleapis.com/css2?family=Gowun+Dodum&family=Black+Han+Sans&display=swap" rel="stylesheet" />
 
@@ -234,17 +234,17 @@
   <!-- 타이틀 -->
   <div class="title-block">
     <span class="icon" id="titleIcon">📍</span>
-    <h1>안전한 현재 위치 전송</h1>
-    <p id="titleDesc">현재 위치를 넘치는님께 공유해서 안전을 지켜주세요.</p>
+    <h1>현재 위치 전송</h1>
+    <p id="titleDesc">버튼을 눌러 자동 위치 추적을 시작하세요</p>
   </div>
 
   <!-- 이름 입력 카드 -->
   <div class="card">
-    <label for="studentName">꿈이름을 입력해주세</label>
+    <label for="studentName">꿈이름</label>
     <input
       type="text"
       id="studentName"
-      placeholder="예) 넘치는 "
+      placeholder="예) 낭만"
       maxlength="30"
       autocomplete="off"
     />
@@ -252,12 +252,12 @@
 
   <!-- 추적 시작 버튼 (추적 시작 후 숨겨짐) -->
   <button class="send-btn" id="startBtn" onclick="startTracking()">
-    🟢 안전한 위치공유 시작
+    🟢 위치 추적 시작
   </button>
 
   <!-- 추적 중 상태 배너 (추적 시작 후 표시) -->
   <div class="tracking-banner" id="trackingBanner">
-    🛰️ 위치 공유 중&nbsp;&nbsp;—&nbsp;&nbsp;자동으로 전송되고 있습니다
+    🛰️ 위치 추적 중&nbsp;&nbsp;—&nbsp;&nbsp;자동으로 전송되고 있습니다
   </div>
 
   <!-- 카운트다운 진행 바 (추적 중에만 표시) -->
@@ -366,14 +366,18 @@
       },
       function(err) {
         var messages = {
-          1: '위치 권한이 거부되었습니다. 추적을 중지합니다.',
-          2: '위치 정보를 가져올 수 없습니다.',
-          3: '위치 요청 시간이 초과되었습니다.'
+          1: '위치 권한이 거부되었습니다.',
+          2: '위치 정보를 가져올 수 없습니다. 잠시 후 다시 시도합니다.',
+          3: '위치 요청 시간이 초과되었습니다. 잠시 후 다시 시도합니다.'
         };
         showStatus('⚠️ ' + (messages[err.code] || '오류 발생'), 'error');
-        // 권한 거부 시 상태 메시지만 표시 (중지 기능 없음)
+        // 일시적 오류(2,3)는 다음 주기에 자동 재시도되므로 추적은 계속 유지
       },
-      { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+      {
+        enableHighAccuracy: true,
+        timeout: 15000,        // 15초로 여유있게
+        maximumAge: 30000      // 최근 30초 내 캐시 위치 허용 (백그라운드 대응)
+      }
     );
   }
 
@@ -398,7 +402,7 @@
       document.getElementById('sendCount').textContent = '총 ' + sendCount + '회 전송됨';
       document.getElementById('lastSentTime').textContent = '마지막: ' + timeStr;
 
-      showStatus('✅ 안전을 위한 꿈쟁이 위치 전송 완료 (' + timeStr + ')', 'success');
+      showStatus('✅ 위치 전송 완료 (' + timeStr + ')', 'success');
 
       // 카운트다운 리셋
       resetCountdown();
@@ -441,6 +445,21 @@
     el.textContent = msg;
     el.className = 'status ' + type + ' visible';
   }
+
+  // ============================================================
+  // 🔄 백그라운드 복귀 감지 - 화면이 다시 켜지면 즉시 1회 전송
+  //    모바일 브라우저는 백그라운드에서 타이머가 느려지거나 멈추므로,
+  //    화면 복귀 시 강제로 위치를 한 번 더 전송하여 누락을 보완
+  // ============================================================
+  document.addEventListener('visibilitychange', function() {
+    if (!document.hidden && isTracking) {
+      // 화면이 다시 보이면 즉시 위치 전송 + 타이머 재정비
+      sendOnce();
+      clearInterval(intervalID);
+      intervalID = setInterval(sendOnce, SEND_INTERVAL_SEC * 1000);
+      resetCountdown();
+    }
+  });
 
   // 엔터키로 시작 가능
   document.getElementById('studentName').addEventListener('keydown', function(e) {
